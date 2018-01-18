@@ -13,6 +13,21 @@ int redReading;
 int greenReading;          
 int previous = LOW;    
 
+#include "pitches.h"
+int melody[] = {
+  NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F3, NOTE_C4, NOTE_F4, NOTE_C4,
+  NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_A4, NOTE_G4, NOTE_F4, NOTE_E4, NOTE_D4, NOTE_CS4,
+  NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F3, NOTE_C4, NOTE_F4, NOTE_C4,
+  NOTE_F4, NOTE_D4, NOTE_C4, NOTE_AS3, NOTE_A3, NOTE_G3, NOTE_F3
+};
+
+int noteDurations[] = {
+  4, 4, 4, 4, 4, 4, 2,
+  4, 4, 4, 4, 3, 8, 8, 8, 8,
+  4, 4, 4, 4, 4, 4, 2,
+  3, 8, 4, 4, 4, 4, 4  
+};
+
 bool pressed = false;
 void setup()
 {
@@ -23,6 +38,8 @@ void setup()
   pinMode(wrongButton, INPUT);
   pinMode(rightButton, INPUT);
   pinMode(buzzerPin, OUTPUT);
+
+  playTheme();
   
   Serial.begin(9600);
   Serial.println("INITIALIZE");
@@ -87,7 +104,7 @@ void buzzerLights(){
     }
     else if (greenState == LOW){
       tone(buzzerPin, 262, 500);
-      redState = HIGH;
+      redState = changeState(redState);
     }   
   }
  
@@ -100,7 +117,7 @@ void buzzerLights(){
     }
     else if (redState == LOW){
       tone(buzzerPin, 294, 500);
-      greenState = HIGH;
+      greenState = changeState(greenState);
     }   
   }
   
@@ -111,4 +128,14 @@ void buzzerLights(){
   digitalWrite(greenPin, greenState);
 }
 
+
+void playTheme(){
+  for (int thisNote = 23; thisNote < 30; thisNote++) {
+      int noteDuration = 1000 / noteDurations[thisNote];
+      tone(9, melody[thisNote], noteDuration);
+      int pauseBetweenNotes = noteDuration * 1.30;
+      delay(pauseBetweenNotes);
+      noTone(8);
+    }
+}
 
