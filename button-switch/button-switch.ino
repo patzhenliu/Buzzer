@@ -1,19 +1,32 @@
+//pins
+int greenButton = 2; 
 int redButton = 3; 
-int greenButton = 2;        
-int redPin = 13;  
-int greenPin = 12; 
+int greenPin = 12; //LED 
+int redPin = 13;  //LED
 
+int restartButton = 4;
 int wrongButton = 5;
 int rightButton = 6;
-int buzzerPin = 9;   
+int buzzerPin = 11;   
 
 int redState = LOW;
-int greenState = LOW;     
-int redReading; 
-int greenReading;          
-int previous = LOW;    
+int greenState = LOW; 
+int restartReading;
+int rightReading;
+int wrongReading; 
+
+int rrPin = 10;
+int rgPin = 9;
+int grPin = 8;
+int ggPin = 7;
+
+//gets state of LEDs
+int redReading;
+int greenReading;             
 
 #include "pitches.h"
+
+//jeapardy tune
 int melody[] = {
   NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F3, NOTE_C4, NOTE_F4, NOTE_C4,
   NOTE_C4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_A4, NOTE_G4, NOTE_F4, NOTE_E4, NOTE_D4, NOTE_CS4,
@@ -28,7 +41,7 @@ int noteDurations[] = {
   3, 8, 4, 4, 4, 4, 4  
 };
 
-bool pressed = false;
+bool pressed = false; //flag for state of buttons
 void setup()
 {
   pinMode(redButton, INPUT);
@@ -38,41 +51,63 @@ void setup()
   pinMode(wrongButton, INPUT);
   pinMode(rightButton, INPUT);
   pinMode(buzzerPin, OUTPUT);
+  
+  pinMode(rrPin, OUTPUT);
+  pinMode(rgPin, OUTPUT);
+  pinMode(grPin, OUTPUT);
+  pinMode(ggPin, OUTPUT);
 
-  playTheme();
+  restartReading = digitalRead(restartButton);
+  rightReading = digitalRead(rightButton);
+  wrongReading = digitalRead(wrongButton);
+
+  //playTheme(); //plays tune upon uploading sketch
   
   Serial.begin(9600);
   Serial.println("INITIALIZE");
 }
 
-void loop()
-{
-  buzzerLights();
+void loop(){
+  if (redState == LOW && greenState == LOW){
+    //checkMotion, if motion buzzer sound
+    buzzerLights();
+  }
   if (redState == HIGH){
-    redState = answerButtons(redState, redPin);
+    redState = answerButtons(rrPin, rgPin);
   }
   else if (greenState == HIGH) {
-    greenState = answerButtons(greenState, greenPin);
+    greenState = answerButtons(grPin, ggPin);
+  }
+  else{
+    rightReading = digitalRead(rightButton);
+    wrongReading = digitalRead(wrongButton);
+  }
+  if (digitalRead(restartButton) != restartReading) { //dip switch state is changed
+    restart();
+    restartReading = digitalRead(restartButton);
   }
   
 }
 
-static int answerButtons(int lightState, int lightPin){
-  int rightReading = digitalRead(rightButton);
-  int wrongReading = digitalRead(wrongButton);
-  if (rightReading == HIGH) {
+static int answerButtons(int rPin, int gPin){ //change to DIP SWITCH 
+  if (digitalRead(rightButton) != rightReading) { //dip switch
+    rightReading = digitalRead(rightButton);
+    turnOn(gPin);
+    int tempState = HIGH;
      for (int i = 0; i < 3; i++){
        tone(buzzerPin, 823, 200);
-       Serial.println(lightState);
-       lightState = changeState(lightState);
-       digitalWrite(lightPin, lightState);
+       tempState = changeState(tempState);
+       digitalWrite(gPin, tempState);
        delay(500);
      }
      return LOW;
    }
-  else if (wrongReading == HIGH) {
-    digitalWrite(lightPin, changeState(lightState));
+  else if (digitalRead(wrongButton) != wrongReading) { //dip switch
+    //digitalWrite(lightPin, changeState(lightState));
+    wrongReading = digitalRead(wrongButton);
+    turnOn(rPin);
     tone(buzzerPin, 223, 1000);
+    RGBoff(rPin, gPin);
     return LOW;
   }
   return HIGH;
@@ -80,6 +115,7 @@ static int answerButtons(int lightState, int lightPin){
 
 
 static int changeState(int state){
+  //changes HIGH to LOW, LOW to HIGH
   if (state == HIGH){
     return LOW;
   }
@@ -89,33 +125,30 @@ static int changeState(int state){
 }
 
 void buzzerLights(){
+  //gets state for LEDs
   redReading = digitalRead(redButton);
   greenReading = digitalRead(greenButton);
 
-  // if the input just went from LOW and HIGH and we've waited long enough
-  // to ignore any noise on the circuit, toggle the output pin and remember
-  // the time
-  //Serial.println(reading);
+  //checks if you press light once and changes the state
+  //of the light to be HIGH
   if (redReading == HIGH && not pressed) {
-    //Serial.println("PRESSED");
     pressed = true;
-    if (redState == HIGH){ // delete later
+    /*if (redState == HIGH){ // delete later
       redState = LOW;
-    }
-    else if (greenState == LOW){
-      tone(buzzerPin, 262, 500);
+    }*/
+    if (greenState == LOW){ //light will turn on as long as the opponent's light is not on
+      tone(buzzerPin, 262, 500); //buzzer sound
       redState = changeState(redState);
     }   
   }
  
-
+  //same for green light as red light
   if (greenReading == HIGH && not pressed) {
-    Serial.println("PRESSED");
     pressed = true;
-    if (greenState == HIGH){
+    /*if (greenState == HIGH){
       greenState = LOW;
-    }
-    else if (redState == LOW){
+    }*/
+    if (redState == LOW){
       tone(buzzerPin, 294, 500);
       greenState = changeState(greenState);
     }   
@@ -128,14 +161,34 @@ void buzzerLights(){
   digitalWrite(greenPin, greenState);
 }
 
-
 void playTheme(){
-  for (int thisNote = 23; thisNote < 30; thisNote++) {
+  //plays jeapardy tune
+  for (int thisNote = 0; thisNote < 30; thisNote++) {
       int noteDuration = 1000 / noteDurations[thisNote];
-      tone(9, melody[thisNote], noteDuration);
+      tone(buzzerPin, melody[thisNote], noteDuration);
       int pauseBetweenNotes = noteDuration * 1.30;
       delay(pauseBetweenNotes);
       noTone(8);
     }
+}
+
+void turnOn(int pin){ //change colour for RGB LED
+  digitalWrite(pin, HIGH);
+  delay(1000);
+}
+
+void RGBoff(int rPin, int gPin){
+  digitalWrite(rPin, LOW);
+  digitalWrite(gPin, LOW);
+}
+
+void restart() {
+  Serial.println("RESTART");
+  redState = LOW;
+  greenState = LOW;
+  RGBoff(rrPin, rgPin);
+  RGBoff(grPin, ggPin);  
+  playTheme();
+  //start countdown timer
 }
 
